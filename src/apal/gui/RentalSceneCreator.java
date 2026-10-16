@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
@@ -179,53 +180,96 @@ public RentalSceneCreator (double width, double height) {
 			}
 			
 			if(event.getSource() == newRentalBtn )  {
-				
-				if(!(serialForCarField.getText().isBlank())){
-					int randomCode = rand.nextInt(1000);
-					int k = 0, l = 0, j = 0, t = 0, mul = 0;
-					for(int i = 0; i < VehicleSceneCreator.vehicleList.size(); i++) {
-						if(VehicleSceneCreator.vehicleList.get(i).getVehicleLicensePlate().equals(serialForCarField.getText())) {
-							k = 1;
-							break;
-						}
-					}
-					
-					for(int i = 0; i < StoreSceneCreator.storeList.size(); i++) {
-						if(StoreSceneCreator.storeList.get(i).getStoreName().equals(pickUpStoreField.getText())) {
-							l = 1;
-							break;
-						}
-					}
-					
-					for(int i = 0; i < ClientSceneCreator.clientList.size(); i++) {
-						if(ClientSceneCreator.clientList.get(i).getClientFullName().equals(clientNameField.getText())) {
-							j = 1;
-							break;
-						}
-					}
-					DateTimeFormatter dateFormat =  DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-					LocalDateTime pickUpDT = LocalDateTime.parse(pickUpDateTimeField.getText(), dateFormat);
-					LocalDateTime returnDT = LocalDateTime.parse(returnDateTimeField.getText(), dateFormat);
-					if(pickUpDT.isBefore(returnDT) || pickUpDT.isEqual(returnDT)){
-						t = 1;
-					}
-					if(pickUpDT.isEqual(returnDT)) {mul = 1;}
-					
-					if(k == 1 && l == 1 && j == 1 && t == 1) {
-						int rentalCode = randomCode;
-						String rentalVehicle = serialForCarField.getText();
-						String rentalClient = clientNameField.getText();
-						String rentalStore = pickUpStoreField.getText();
-						LocalDateTime rentalDateTime = pickUpDT;
-						String rentalStoreRe = DropOffStoreField.getText();
-						LocalDateTime rentalDateTimeRe = returnDT;
-					    float rentalTotalCost = 1;
-					    createRental(rentalCode, rentalVehicle, rentalClient, rentalStore,
-					    		rentalDateTime, rentalStoreRe, rentalDateTimeRe, rentalTotalCost, mul);
-					    tableSync();
-						clearTextFields();
+				List<String> errors = new ArrayList<>();
+				if (serialForCarField.getText().isBlank()) {
+					errors.add("Enter a vehicle serial number.");
+				}
+				if (clientNameField.getText().isBlank()) {
+					errors.add("Enter a client name.");
+				}
+				if (pickUpStoreField.getText().isBlank()) {
+					errors.add("Enter a pickup store.");
+				}
+				if (pickUpDateTimeField.getText().isBlank()) {
+					errors.add("Enter a pickup date and time.");
+				}
+				if (DropOffStoreField.getText().isBlank()) {
+					errors.add("Enter a return store.");
+				}
+				if (returnDateTimeField.getText().isBlank()) {
+					errors.add("Enter a return date and time.");
+				}
+				if (!errors.isEmpty()) {
+					showError(String.join("\n", errors));
+					return;
+				}
+
+				boolean vehicleExists = false;
+				for (int i = 0; i < VehicleSceneCreator.vehicleList.size(); i++) {
+					if (VehicleSceneCreator.vehicleList.get(i).getVehicleLicensePlate()
+							.equals(serialForCarField.getText())) {
+						vehicleExists = true;
+						break;
 					}
 				}
+				if (!vehicleExists) {
+					errors.add("No vehicle matches that serial number. Enter the exact serial number of an existing vehicle.");
+				}
+
+				boolean clientExists = false;
+				for (int i = 0; i < ClientSceneCreator.clientList.size(); i++) {
+					if (ClientSceneCreator.clientList.get(i).getClientFullName()
+							.equals(clientNameField.getText())) {
+						clientExists = true;
+						break;
+					}
+				}
+				if (!clientExists) {
+					errors.add("No client matches that name. Enter the exact full name of an existing client.");
+				}
+
+				boolean pickupStoreExists = false;
+				boolean returnStoreExists = false;
+				for (int i = 0; i < StoreSceneCreator.storeList.size(); i++) {
+					String storeName = StoreSceneCreator.storeList.get(i).getStoreName();
+					if (storeName.equals(pickUpStoreField.getText())) {
+						pickupStoreExists = true;
+					}
+					if (storeName.equals(DropOffStoreField.getText())) {
+						returnStoreExists = true;
+					}
+				}
+				if (!pickupStoreExists) {
+					errors.add("No pickup store matches that name. Enter the exact name of an existing store.");
+				}
+				if (!returnStoreExists) {
+					errors.add("No return store matches that name. Enter the exact name of an existing store.");
+				}
+
+				DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+				LocalDateTime pickUpDT;
+				LocalDateTime returnDT;
+				try {
+					pickUpDT = LocalDateTime.parse(pickUpDateTimeField.getText(), dateFormat);
+					returnDT = LocalDateTime.parse(returnDateTimeField.getText(), dateFormat);
+				} catch (java.time.format.DateTimeParseException exception) {
+					showError("Enter both dates in the format dd/MM/yyyy HH:mm, for example 25/12/2026 14:30.");
+					return;
+				}
+				if (returnDT.isBefore(pickUpDT)) {
+					errors.add("The return date and time must not be before the pickup date and time.");
+				}
+				if (!errors.isEmpty()) {
+					showError(String.join("\n", errors));
+					return;
+				}
+
+				int mul = pickUpDT.isEqual(returnDT) ? 1 : 0;
+				int rentalCode = rand.nextInt(1000);
+				createRental(rentalCode, serialForCarField.getText(), clientNameField.getText(),
+						pickUpStoreField.getText(), pickUpDT, DropOffStoreField.getText(), returnDT, 1, mul);
+				tableSync();
+				clearTextFields();
 			}
 			
 			
@@ -253,6 +297,14 @@ public RentalSceneCreator (double width, double height) {
 					pickUpDateTimeField.setText(String.valueOf(selectedRental.getRentalDateTime()));
 				}
 			}
+		}
+
+		private void showError(String message) {
+			Alert alert = new Alert(Alert.AlertType.ERROR);
+			alert.setTitle("Cannot create rental");
+			alert.setHeaderText("Please correct the following:");
+			alert.setContentText(message);
+			alert.showAndWait();
 		}
 
 		public void createRental(int rentalCode, String rentalVehicle, String rentalClient, String rentalStore,
