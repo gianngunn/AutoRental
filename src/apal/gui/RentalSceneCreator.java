@@ -58,12 +58,12 @@ public RentalSceneCreator (double width, double height) {
 	pickUpStoreField = new TextField();
 	pickUpDateTimeLbl = new Label("Pick Up Date Time:");
 	pickUpDateTimeField = new TextField();
-	pickUpDateTimeField.setPromptText("dd/MM/yyyy hh:mm");
+	pickUpDateTimeField.setPromptText("dd/MM/yyyy HH:mm");
 	DropOffStoreLbl = new Label("DropOff Store:");
 	DropOffStoreField = new TextField();
 	returnDateTimeLbl = new Label("Return Date Time:");
 	returnDateTimeField = new TextField();
-	returnDateTimeField.setPromptText("dd/MM/yyyy hh:mm");
+	returnDateTimeField.setPromptText("dd/MM/yyyy HH:mm");
 	newRentalBtn = new Button("New rental");
 	deleteRentalBtn = new Button("Delete rental");
 	backBtn = new Button("Go Back");
