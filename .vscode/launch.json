@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run APAL with JavaFX",
+      "request": "launch",
+      "mainClass": "apal.gui.InfoFX",
+      "vmArgs": "--module-path \"C:\\Program Files\\Java\\javafx-sdk-27\\lib\" --add-modules javafx.controls"
+    }
+  ]
+}

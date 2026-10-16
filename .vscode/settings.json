@@ -1,0 +1,12 @@
+{
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-25",
+      "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4.101-hotspot",
+      "default": true
+    }
+  ],
+  "java.project.referencedLibraries": [
+    "C:\\Program Files\\Java\\javafx-sdk-27\\lib\\*.jar"
+  ]
+}
