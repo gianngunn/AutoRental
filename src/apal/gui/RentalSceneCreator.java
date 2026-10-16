@@ -275,16 +275,20 @@ public RentalSceneCreator (double width, double height) {
 			
 			
 			if(event.getSource() == deleteRentalBtn) {
-				LocalDateTime LDTN = LocalDateTime.now();
-				
-				int daysB = (int)ChronoUnit.DAYS.between(LDTN, LocalDateTime.parse(pickUpDateTimeField.getText()));
-				int k = 0;
-				Rental selectedCode = rentalTableView.getSelectionModel().getSelectedItem();
-				if(selectedCode != null) {
-					k = selectedCode.getRentalCode();
+				Rental selectedRental = rentalTableView.getSelectionModel().getSelectedItem();
+				if (selectedRental == null) {
+					Alert alert = new Alert(Alert.AlertType.ERROR);
+					alert.setTitle("Cannot delete rental");
+					alert.setHeaderText(null);
+					alert.setContentText("Select a rental to delete.");
+					alert.showAndWait();
+					return;
 				}
+
+				LocalDateTime LDTN = LocalDateTime.now();
+				int daysB = (int)ChronoUnit.DAYS.between(LDTN, selectedRental.getRentalDateTime());
 				if(daysB > 2) {
-					deleteRental(k);
+					deleteRental(selectedRental.getRentalCode());
 				}
 				tableSync();
 				clearTextFields();
