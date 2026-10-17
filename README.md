@@ -1,26 +1,42 @@
-AutoRental
-A JavaFX desktop app for managing the records of a vehicle-rental service.
+# AutoRental
 
-What it manages
-The main menu provides catalogues for cities, stores, clients, vehicles, and rentals. The app starts from InfoFX; each catalogue screen is built in apal.gui.
+A JavaFX desktop application for managing the basic records of a vehicle-rental service.
 
-Main data types
-Classes in apal.core represent cities, stores, clients, rentals, and vehicles. Vehicles have two types: Car and TwoWheeled.
+## Features
 
-A rental records its vehicle, client, pickup and return stores, dates, and total cost. The cost is calculated from the vehicle’s daily rate and rental duration.
+- Manage catalogues for cities, stores, clients, vehicles, and rentals.
+- Represent vehicles as cars or two-wheeled vehicles.
+- Calculate rental costs using a vehicle’s daily rate and the rental duration.
 
-Creating a rental
-A rental is added only when:
+## Project Structure
 
-All required fields are filled in.
-The vehicle’s serial number matches an existing vehicle.
-The client name matches an existing client’s full name.
-Both pickup and return store names match existing stores.
-Both dates use the format dd/MM/yyyy HH:mm.
-The return time is not before the pickup time.
-Names and serial numbers must match exactly, including capitalization and spaces. If a check fails, the app displays an error message. Rental codes are randomly selected from 0–999 and checked against existing rentals to avoid duplicates.
+- `src/apal/core/` — data models for cities, stores, clients, vehicles, and rentals.
+- `src/apal/gui/` — JavaFX application, catalogue screens, and menu images.
+- `InfoFX` starts the application; `MainSceneCreator` builds its main menu.
 
-Running and data
-The workspace is configured for JDK 25 and JavaFX 27. Records are kept in memory, so they are lost when the app closes.
+## Rental Creation on `main`
 
-This version reflects the improvements on the version-2-AutoRental branch.
+The rental creation logic runs only when the serial-number field is not blank. A rental is added when:
+
+1. The serial number matches an existing vehicle’s license plate.
+2. The client name matches an existing client’s full name.
+3. The pickup-store name matches an existing store.
+4. Both date/time values parse using `dd/MM/yyyy HH:mm`.
+5. The pickup time is before or equal to the return time.
+
+Names and serial numbers are compared exactly, including capitalization and spaces.
+
+**Current limitations:**
+
+- The return-store name is saved as entered but is not checked against existing stores.
+- If a vehicle, client, or pickup store does not match, the rental is silently not added.
+- Invalid or empty date/time input can cause a parsing exception.
+- Rental codes are randomly chosen from `0–999` without checking for duplicates.
+
+## Requirements
+
+The workspace is configured for JDK 25 and JavaFX 27. See `.vscode/settings.json`.
+
+## Data Storage
+
+Records are held in memory and are lost when the application closes.
