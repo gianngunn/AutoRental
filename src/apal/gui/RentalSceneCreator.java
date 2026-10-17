@@ -265,7 +265,7 @@ public RentalSceneCreator (double width, double height) {
 				}
 
 				int mul = pickUpDT.isEqual(returnDT) ? 1 : 0;
-				int rentalCode = rand.nextInt(1000);
+				int rentalCode = generateUniqueRentalCode();
 				createRental(rentalCode, serialForCarField.getText(), clientNameField.getText(),
 						pickUpStoreField.getText(), pickUpDT, DropOffStoreField.getText(), returnDT, 1, mul);
 				tableSync();
@@ -309,6 +309,23 @@ public RentalSceneCreator (double width, double height) {
 			alert.setHeaderText("Please correct the following:");
 			alert.setContentText(message);
 			alert.showAndWait();
+		}
+
+		private int generateUniqueRentalCode() {
+			for (int attempt = 0; attempt < 1000; attempt++) {
+				int candidate = rand.nextInt(1000);
+				boolean used = false;
+				for (Rental rental : rentalList) {
+					if (rental.getRentalCode() == candidate) {
+						used = true;
+						break;
+					}
+				}
+				if (!used) {
+					return candidate;
+				}
+			}
+			throw new IllegalStateException("No unique rental code is available.");
 		}
 
 		public void createRental(int rentalCode, String rentalVehicle, String rentalClient, String rentalStore,
