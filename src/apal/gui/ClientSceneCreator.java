@@ -1,9 +1,8 @@
 package apal.gui;
 
-import java.util.ArrayList;
-import java.util.List;
 import javafx.scene.Scene;
 import apal.core.Client;
+import apal.service.ClientService;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -18,8 +17,7 @@ import javafx.scene.layout.GridPane;
 
 public class ClientSceneCreator extends SceneCreator implements EventHandler<MouseEvent>{
 
-	//List of store
-	public static ArrayList<Client> clientList;
+	private final ClientService clientService;
 	//Flow Pane
 	FlowPane buttonFlowPane;
 	//Grid Panes
@@ -33,11 +31,11 @@ public class ClientSceneCreator extends SceneCreator implements EventHandler<Mou
 	//TableView
 	public static TableView<Client> clientTableView;
 	
-	public ClientSceneCreator(double width, double height) {
+	public ClientSceneCreator(double width, double height, ClientService clientService) {
 		super(width, height);
+		this.clientService = clientService;
 		
 		//Initialize fields
-		clientList = new ArrayList<>();
 		rootGridPane = new GridPane();
 		buttonFlowPane = new FlowPane();
 		cIdLbl = new Label("Client ID: ");
@@ -153,63 +151,40 @@ public class ClientSceneCreator extends SceneCreator implements EventHandler<Mou
 		}
 
 		if(event.getSource() == newClientBtn) {
-			int o = 0,p = 0;
-			for (int i = 0; i < clientList.size(); i++) {
-				if(clientList.get(i).getClientID().equals(cIdField.getText())) {
-					o = 1;
-				}
-				
-			}
-			for (int i = 0; i < clientList.size(); i++) {
-				if(clientList.get(i).getClientDrivingL().equals(cDrivingLField.getText())) {
-					p = 1;
-				}
-				
-			}
-		
-			if(o == 0 && p == 0) {
-			if(!(cIdField.getText().isBlank())) {
-				String clientID = cIdField.getText();
-				String clientDrivingL = cDrivingLField.getText();
-				String clientFullName = cFullNameField.getText();
-				String clientEmail = cEmailField.getText();
-				String clientAddress = cAddressField.getText();
-				int clientPhoneN = Integer.valueOf(cPhoneNField.getText());
-				createClient(clientID, clientDrivingL, clientFullName, clientEmail, clientAddress, clientPhoneN);
-				
-				tableSync();
+			if (runServiceAction("Cannot create client", () -> clientService.add(
+					cIdField.getText(), cDrivingLField.getText(), cFullNameField.getText(),
+					cEmailField.getText(), cAddressField.getText(), Integer.parseInt(cPhoneNField.getText())))) {
+				refreshTable();
 				clearTextFields();
-			}
 			}
 		}
 		
 		if(event.getSource() == updateClientBtn) {
-			if(!(cIdField.getText().isBlank())) {
-				//String clientID = cIdField.getText();
-				String clientDrivingL = cDrivingLField.getText();
-				String clientFullName = cFullNameField.getText();
-				String clientEmail = cEmailField.getText();
-				String clientAddress = cAddressField.getText();
-				int clientPhoneN = Integer.valueOf(cPhoneNField.getText());
-				String k = "";
-				Client selectedcId = clientTableView.getSelectionModel().getSelectedItem();
-				if(selectedcId != null) {
-					k = selectedcId.getClientID();
+			Client selectedClient = clientTableView.getSelectionModel().getSelectedItem();
+			if (selectedClient == null) {
+				runServiceAction("Cannot update client", () -> {
+					throw new IllegalArgumentException("Select a client to update.");
+				});
+			} else {
+				if (runServiceAction("Cannot update client", () -> clientService.update(
+						selectedClient.getClientID(), cFullNameField.getText(), cEmailField.getText(),
+						cAddressField.getText(), Integer.parseInt(cPhoneNField.getText())))) {
+					refreshTable();
+					clearTextFields();
 				}
-				updateClient(k, clientDrivingL, clientFullName, clientEmail, clientAddress, clientPhoneN);
-				
-				tableSync();
-				clearTextFields();
-				
 			}
 		}
 		
 		if(event.getSource() == deleteClientBtn) {
-			if(!(cIdField.getText().isBlank())) {
-			deleteClient(cIdField.getText());
-			
-			tableSync();
-			clearTextFields();
+			Client selectedClient = clientTableView.getSelectionModel().getSelectedItem();
+			if (selectedClient == null) {
+				runServiceAction("Cannot delete client", () -> {
+					throw new IllegalArgumentException("Select a client to delete.");
+				});
+			} else if (runServiceAction("Cannot delete client",
+					() -> clientService.delete(selectedClient.getClientID()))) {
+					refreshTable();
+					clearTextFields();
 			}
 		}
 		
@@ -227,67 +202,20 @@ public class ClientSceneCreator extends SceneCreator implements EventHandler<Mou
 		
 		if(event.getSource() == goBtn ) {
 			String clientID = searchBox.getText();
-			sTable(clientID);
+			clientTableView.getItems().setAll(clientService.findById(clientID));
+			clearSearchField();
 		}
 		
 		if(event.getSource() == viewAllBtn ) {
-			tableSync();		
+			refreshTable();
 		}	
 		
 		
 	}
 
 	
-	public void createClient(String clientID, String clientDrivingL, String clientFullName, String clientEmail,
-			String clientAddress, int clientPhoneN) {
-		Client d = new Client(clientID, clientDrivingL, clientFullName, clientEmail, clientAddress, clientPhoneN);
-		clientList.add(d);
-		
-	}
-	
-	public void updateClient(String k, String clientDrivingL, String clientFullName, String clientEmail,
-			String clientAddress, int clientPhoneN) {
-		for(Client d : clientList) {
-			if(d instanceof Client) {
-				if((d.getClientID())==k) {
-					d.setClientFullName(clientFullName);
-					d.setClientEmail(clientEmail);
-					d.setClientAddress(clientAddress);
-					d.setClientPhoneN(clientPhoneN);
-				}
-			}
-		}
-		
-	}
-	
-	public void deleteClient(String clientID) {
-		for (int i = 0; i < clientList.size(); i++) {
-			if(clientList.get(i).getClientID().equals(clientID)) {
-				clientList.remove(i);
-				break;
-			}
-		}
-	}
-	
-	public void tableSync() {
-		List<Client> items = clientTableView.getItems();
-		items.clear();
-		for(Client d : clientList) {
-			if(d instanceof Client) {
-				items.add((Client) d);
-			}
-		}
-	}
-	
-	public void sTable(String clientID) {
-		List<Client> items = clientTableView.getItems();
-		items.clear();
-		for(Client d : clientList) {
-			if(d.getClientID().equals(clientID) ) {
-				items.add((Client)d);
-			}
-		}
-		clearSearchField();
+	private void refreshTable() {
+		clientTableView.getItems().setAll(clientService.getAll());
 	}
 	
 	public void clearTextFields(){

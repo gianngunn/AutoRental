@@ -1,9 +1,7 @@
 package apal.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import apal.core.City;
+import apal.service.CityService;
 
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
@@ -20,8 +18,7 @@ import javafx.scene.layout.GridPane;
 
 public class CitySceneCreator extends SceneCreator implements EventHandler<MouseEvent>{
 	
-	//List of city
-	public static ArrayList<City> citiesList;
+	private final CityService cityService;
 	//Flow Pane
 	FlowPane buttonFlowPane,goFlowPane;
 	//Grid Panes
@@ -34,14 +31,11 @@ public class CitySceneCreator extends SceneCreator implements EventHandler<Mouse
 	TextField nameField, idField, searchBox;
 	//TableView
 	public static TableView<City> citiesTableView;
-	int i = City.MAX_CODE();
 	
 	
-	public CitySceneCreator(double width, double height) {
+	public CitySceneCreator(double width, double height, CityService cityService) {
 		super(width, height);
-		
-		//Initialize fields
-		citiesList = new ArrayList<>();
+		this.cityService = cityService;
 		rootGridPane = new GridPane();
 		buttonFlowPane = new FlowPane();
 		goFlowPane = new FlowPane();
@@ -130,39 +124,37 @@ public class CitySceneCreator extends SceneCreator implements EventHandler<Mouse
 		}
 		
 		if(event.getSource() == newCityBtn ) {
-			if(!(nameField.getText().isBlank())){
-			String cityName = nameField.getText();
-			String cityCode = String.valueOf(i);
-			
-			createCity(cityName, cityCode);
+			if (runServiceAction("Cannot create city", () -> cityService.add(nameField.getText()))) {
+				refreshTable();
+				clearTextFields();
 			}
-			tableSync();
-			clearTextFields();
 		}
 		
 		if(event.getSource() == updateCityBtn) {
-			if(!(nameField.getText().isBlank())){
-			String cityName = nameField.getText();
-			String cityCode = String.valueOf(i);
-			int k = 0; 
 			City selectedCode = citiesTableView.getSelectionModel().getSelectedItem();
-			if(selectedCode != null) {
-				k= selectedCode.getCityCode();
+			if (selectedCode == null) {
+				runServiceAction("Cannot update city", () -> {
+					throw new IllegalArgumentException("Select a city to update.");
+				});
+			} else {
+				if (runServiceAction("Cannot update city",
+						() -> cityService.rename(selectedCode.getCityCode(), nameField.getText()))) {
+					refreshTable();
+					clearTextFields();
+				}
 			}
-			
-			updateCity(cityName, cityCode ,k);
-			
-			tableSync();
-			clearTextFields();
-		}
 		}
 		
 		if(event.getSource() == deleteCityBtn) {
-			if(!(nameField.getText().isBlank())){
-			deleteCity(nameField.getText());
-			
-			tableSync();
-			clearTextFields();
+			City selectedCity = citiesTableView.getSelectionModel().getSelectedItem();
+			if (selectedCity == null) {
+				runServiceAction("Cannot delete city", () -> {
+					throw new IllegalArgumentException("Select a city to delete.");
+				});
+			} else if (runServiceAction("Cannot delete city",
+					() -> cityService.delete(selectedCity.getCityCode()))) {
+					refreshTable();
+					clearTextFields();
 			}
 		}
 		
@@ -175,58 +167,18 @@ public class CitySceneCreator extends SceneCreator implements EventHandler<Mouse
 		
 		if(event.getSource() == goBtn) {
 			String cityName = searchBox.getText();
-			sTable(cityName);
+			citiesTableView.getItems().setAll(cityService.findByName(cityName));
+			clearSearchField();
 		}
 		
 		if(event.getSource() == viewAllBtn) {
-			tableSync();
+			refreshTable();
 		}
 		
 	}
 
-	public void createCity(String cityName, String cityCode ) {
-		City d = new City(Integer.valueOf(cityCode) , cityName);
-		citiesList.add(d);
-		
-	}
-	
-	public void sTable(String cityName) {
-		List<City> items = citiesTableView.getItems();
-		items.clear();
-		for(City d : citiesList) {
-			if(d.getCityName().equals(cityName) ) {
-				items.add((City)d);
-			}
-		}
-		clearSearchField();
-	}
-	
-	public void tableSync() {
-		List<City> items = citiesTableView.getItems();
-		items.clear();
-		for(City d : citiesList) {
-			if(d instanceof City) {
-				items.add((City) d);
-			}
-		}
-	}
-	public void updateCity(String cityName, String cityCode,int k) {
-		
-		for(City d : citiesList) {
-			if((d.getCityCode()) == k) {
-				d.setCityName(cityName);
-			}
-		}
-	}
-	
-	
-	public void deleteCity(String cityName) {
-		for (int i = 0; i < citiesList.size(); i++) {
-			if(citiesList.get(i).getCityName().equals(cityName)) {
-				citiesList.remove(i);
-				break;
-			}
-		}
+	private void refreshTable() {
+		citiesTableView.getItems().setAll(cityService.getAll());
 	}
 	
 	

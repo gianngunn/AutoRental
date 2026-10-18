@@ -4,17 +4,10 @@ public class City {
 	
 	private int cityCode;
 	private String cityName;
-	public static int MAX_CODE ;
 	
 	public City(int cityCode, String cityName) {
-		super();
-		MAX_CODE = MAX_CODE + 1;
-		cityCode = MAX_CODE;
 		this.cityCode = cityCode;
 		this.cityName = cityName;
-		
-		
-		System.out.println(MAX_CODE);
 	}
 
 	public int getCityCode() {
@@ -42,10 +35,4 @@ public class City {
 		return ret;
 	}
 
-	public static int MAX_CODE() {
-		
-		return MAX_CODE;
-	}
-
-	
 }

@@ -1,12 +1,9 @@
 package apal.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import apal.core.Rental;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import apal.service.RentalService;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -24,13 +21,9 @@ import javafx.scene.layout.GridPane;
 	
 public class RentalSceneCreator extends SceneCreator implements EventHandler<MouseEvent>{
 	
-Random rand = new Random();
+private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-DateTimeFormatter dateFormat =  DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-	
-
-		
-public static ArrayList<Rental> rentalList;
+private final RentalService rentalService;
 //Flow Pane		
 FlowPane buttonFlowPane;
 //Grid Panes
@@ -44,10 +37,9 @@ TextField serialForCarField, clientNameField, pickUpStoreField, pickUpDateTimeFi
 //TableView
 public static TableView<Rental> rentalTableView;
 		
-public RentalSceneCreator (double width, double height) {
+public RentalSceneCreator (double width, double height, RentalService rentalService) {
 	super (width, height);
-			
-	rentalList = new ArrayList<>();	
+	this.rentalService = rentalService;
 	rootGridPane = new GridPane();
 	buttonFlowPane = new FlowPane();
 	serialForCarLbl = new Label("Serial Number:");
@@ -180,96 +172,21 @@ public RentalSceneCreator (double width, double height) {
 			}
 			
 			if(event.getSource() == newRentalBtn )  {
-				List<String> errors = new ArrayList<>();
-				if (serialForCarField.getText().isBlank()) {
-					errors.add("Enter a vehicle serial number.");
-				}
-				if (clientNameField.getText().isBlank()) {
-					errors.add("Enter a client name.");
-				}
-				if (pickUpStoreField.getText().isBlank()) {
-					errors.add("Enter a pickup store.");
-				}
-				if (pickUpDateTimeField.getText().isBlank()) {
-					errors.add("Enter a pickup date and time.");
-				}
-				if (DropOffStoreField.getText().isBlank()) {
-					errors.add("Enter a return store.");
-				}
-				if (returnDateTimeField.getText().isBlank()) {
-					errors.add("Enter a return date and time.");
-				}
-				if (!errors.isEmpty()) {
-					showError(String.join("\n", errors));
-					return;
-				}
-
-				boolean vehicleExists = false;
-				for (int i = 0; i < VehicleSceneCreator.vehicleList.size(); i++) {
-					if (VehicleSceneCreator.vehicleList.get(i).getVehicleLicensePlate()
-							.equals(serialForCarField.getText())) {
-						vehicleExists = true;
-						break;
-					}
-				}
-				if (!vehicleExists) {
-					errors.add("No vehicle matches that serial number. Enter the exact serial number of an existing vehicle.");
-				}
-
-				boolean clientExists = false;
-				for (int i = 0; i < ClientSceneCreator.clientList.size(); i++) {
-					if (ClientSceneCreator.clientList.get(i).getClientFullName()
-							.equals(clientNameField.getText())) {
-						clientExists = true;
-						break;
-					}
-				}
-				if (!clientExists) {
-					errors.add("No client matches that name. Enter the exact full name of an existing client.");
-				}
-
-				boolean pickupStoreExists = false;
-				boolean returnStoreExists = false;
-				for (int i = 0; i < StoreSceneCreator.storeList.size(); i++) {
-					String storeName = StoreSceneCreator.storeList.get(i).getStoreName();
-					if (storeName.equals(pickUpStoreField.getText())) {
-						pickupStoreExists = true;
-					}
-					if (storeName.equals(DropOffStoreField.getText())) {
-						returnStoreExists = true;
-					}
-				}
-				if (!pickupStoreExists) {
-					errors.add("No pickup store matches that name. Enter the exact name of an existing store.");
-				}
-				if (!returnStoreExists) {
-					errors.add("No return store matches that name. Enter the exact name of an existing store.");
-				}
-
-				DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 				LocalDateTime pickUpDT;
 				LocalDateTime returnDT;
 				try {
-					pickUpDT = LocalDateTime.parse(pickUpDateTimeField.getText(), dateFormat);
-					returnDT = LocalDateTime.parse(returnDateTimeField.getText(), dateFormat);
+					pickUpDT = LocalDateTime.parse(pickUpDateTimeField.getText(), DATE_FORMAT);
+					returnDT = LocalDateTime.parse(returnDateTimeField.getText(), DATE_FORMAT);
 				} catch (java.time.format.DateTimeParseException exception) {
 					showError("Enter both dates in the format dd/MM/yyyy HH:mm, for example 25/12/2026 14:30.");
 					return;
 				}
-				if (returnDT.isBefore(pickUpDT)) {
-					errors.add("The return date and time must not be before the pickup date and time.");
+				if (runServiceAction("Cannot create rental", () -> rentalService.create(
+						serialForCarField.getText(), clientNameField.getText(), pickUpStoreField.getText(),
+						pickUpDT, DropOffStoreField.getText(), returnDT))) {
+					refreshTable();
+					clearTextFields();
 				}
-				if (!errors.isEmpty()) {
-					showError(String.join("\n", errors));
-					return;
-				}
-
-				int mul = pickUpDT.isEqual(returnDT) ? 1 : 0;
-				int rentalCode = generateUniqueRentalCode();
-				createRental(rentalCode, serialForCarField.getText(), clientNameField.getText(),
-						pickUpStoreField.getText(), pickUpDT, DropOffStoreField.getText(), returnDT, 1, mul);
-				tableSync();
-				clearTextFields();
 			}
 			
 			
@@ -277,21 +194,14 @@ public RentalSceneCreator (double width, double height) {
 			if(event.getSource() == deleteRentalBtn) {
 				Rental selectedRental = rentalTableView.getSelectionModel().getSelectedItem();
 				if (selectedRental == null) {
-					Alert alert = new Alert(Alert.AlertType.ERROR);
-					alert.setTitle("Cannot delete rental");
-					alert.setHeaderText(null);
-					alert.setContentText("Select a rental to delete.");
-					alert.showAndWait();
-					return;
+					runServiceAction("Cannot delete rental", () -> {
+						throw new IllegalArgumentException("Select a rental to delete.");
+					});
+				} else if (runServiceAction("Cannot delete rental",
+						() -> rentalService.delete(selectedRental.getRentalCode()))) {
+					refreshTable();
+					clearTextFields();
 				}
-
-				LocalDateTime LDTN = LocalDateTime.now();
-				int daysB = (int)ChronoUnit.DAYS.between(LDTN, selectedRental.getRentalDateTime());
-				if(daysB > 2) {
-					deleteRental(selectedRental.getRentalCode());
-				}
-				tableSync();
-				clearTextFields();
 			
 			}
 			if(event.getSource() == rentalTableView) {
@@ -311,68 +221,8 @@ public RentalSceneCreator (double width, double height) {
 			alert.showAndWait();
 		}
 
-		private int generateUniqueRentalCode() {
-			for (int attempt = 0; attempt < 1000; attempt++) {
-				int candidate = rand.nextInt(1000);
-				boolean used = false;
-				for (Rental rental : rentalList) {
-					if (rental.getRentalCode() == candidate) {
-						used = true;
-						break;
-					}
-				}
-				if (!used) {
-					return candidate;
-				}
-			}
-			throw new IllegalStateException("No unique rental code is available.");
-		}
-
-		public void createRental(int rentalCode, String rentalVehicle, String rentalClient, String rentalStore,
-				LocalDateTime rentalDateTime, String rentalStoreRe, LocalDateTime rentalDateTimeRe, float rentalTotalCost,
-				int mul) {
-			float c = 1;
-			for(int i = 0; i < VehicleSceneCreator.vehicleList.size(); i++) {
-				if(VehicleSceneCreator.vehicleList.get(i).getVehicleLicensePlate().equals(rentalVehicle)) {
-					c = VehicleSceneCreator.vehicleList.get(i).getVehicleDayCost(); 
-					break;
-				}
-			}
-			
-			long daysBetween = ChronoUnit.DAYS.between(rentalDateTime, rentalDateTimeRe);
-			
-			if(mul == 0) {
-				rentalTotalCost = c * daysBetween;
-			}
-			else {
-				rentalTotalCost = c;
-			}
-			
-			Rental d = new Rental(rentalCode, rentalVehicle, rentalClient, rentalStore, rentalDateTime,
-					rentalStoreRe, rentalDateTimeRe, rentalTotalCost);
-			rentalList.add(d);
-		}
-
-		public void deleteRental(int k) {
-			for(int i = 0; i < rentalList.size(); i++) {
-				if(rentalList.get(i).getRentalCode() == k) {
-					rentalList.remove(i);
-					break;
-				}
-			}
-			
-		}
-
-
-
-		public void tableSync() {
-			List<Rental> rentals = rentalTableView.getItems();
-			rentals.clear();
-			for(Rental d : rentalList) {
-				if(d instanceof Rental) {
-					rentals.add((Rental) d);
-				}
-			}
+		private void refreshTable() {
+			rentalTableView.getItems().setAll(rentalService.getAll());
 		}
 		
 		public void clearTextFields() {

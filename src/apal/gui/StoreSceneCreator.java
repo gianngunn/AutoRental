@@ -1,8 +1,7 @@
 package apal.gui;
 
-import java.util.ArrayList;
-import java.util.List;
 import apal.core.Store;
+import apal.service.StoreService;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -17,8 +16,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 
 public class StoreSceneCreator extends SceneCreator implements EventHandler<MouseEvent>{
-	//List of store
-	public static ArrayList<Store> storeList;
+	private final StoreService storeService;
 	//Flow Pane
 	FlowPane buttonFlowPane,goFlowPane;
 	//Grid Panes
@@ -32,13 +30,12 @@ public class StoreSceneCreator extends SceneCreator implements EventHandler<Mous
 	//TableView
 	public static TableView<Store> storeTableView;
 	
-	int i = Store.MAX_CODES();
 	
-	public StoreSceneCreator(double width, double height) {
+	public StoreSceneCreator(double width, double height, StoreService storeService) {
 		super(width, height);
+		this.storeService = storeService;
 		
 		//Initialize fields
-		storeList = new ArrayList<>();
 		rootGridPane = new GridPane();
 		buttonFlowPane = new FlowPane();
 		goFlowPane = new FlowPane();
@@ -133,44 +130,38 @@ public class StoreSceneCreator extends SceneCreator implements EventHandler<Mous
 		}
 		
 		if(event.getSource() == newStoreBtn) {
-			for(int i = 0 ; i <= CitySceneCreator.citiesList.size(); i++ ) {
-				if(CitySceneCreator.citiesList.get(i).getCityName().equals(cityField.getText())) {
-					if(!(nameField.getText().isBlank())) {
-					String storeName = nameField.getText();
-					String storeCity = cityField.getText();
-					int storeCode = i ;
-					createStore(storeCode, storeName, storeCity);
-					tableSync();	
-					clearTextFields();
-					break ;
-					}
-				}
+			if (runServiceAction("Cannot create store",
+					() -> storeService.add(nameField.getText(), cityField.getText()))) {
+				refreshTable();
+				clearTextFields();
 			}
-			clearTextFields();	
 		}
 		
 		if(event.getSource() == updateStoreBtn) {
-			if(!(nameField.getText().isBlank())) {
-			String storeName = nameField.getText();
-			int storeCode = i;
-			int k = 0;
 			Store selectedCode = storeTableView.getSelectionModel().getSelectedItem();
-			if(selectedCode != null) {
-				k = selectedCode.getStoreCode();
-			}
-			updateStore(storeName, storeCode, k);
-			
-			tableSync();
-			clearTextFields();
+			if (selectedCode == null) {
+				runServiceAction("Cannot update store", () -> {
+					throw new IllegalArgumentException("Select a store to update.");
+				});
+			} else {
+				if (runServiceAction("Cannot update store",
+						() -> storeService.rename(selectedCode.getStoreCode(), nameField.getText()))) {
+					refreshTable();
+					clearTextFields();
+				}
 			}
 		}
 		
 		if(event.getSource() == deleteStoreBtn) {
-			if(!(nameField.getText().isBlank())) {
-			deleteStore(nameField.getText());
-			
-			tableSync();
-			clearTextFields();
+			Store selectedStore = storeTableView.getSelectionModel().getSelectedItem();
+			if (selectedStore == null) {
+				runServiceAction("Cannot delete store", () -> {
+					throw new IllegalArgumentException("Select a store to delete.");
+				});
+			} else if (runServiceAction("Cannot delete store",
+					() -> storeService.delete(selectedStore.getStoreCode()))) {
+					refreshTable();
+					clearTextFields();
 			}
 		}
 		
@@ -186,60 +177,18 @@ public class StoreSceneCreator extends SceneCreator implements EventHandler<Mous
 		
 		if(event.getSource() == goBtn) {
 			String storeCity = searchBox.getText();
-			sTable(storeCity);
+			storeTableView.getItems().setAll(storeService.findByCity(storeCity));
+			clearSearchField();
 		}
 		
 		if(event.getSource() == viewAllBtn) {
-			tableSync();
+			refreshTable();
 		}
 		
 		
 	}
-	public void sTable(String storeCity) {
-		List<Store> items = storeTableView.getItems();
-		items.clear();
-		for(Store d : storeList) {
-			if(d.getStoreCity().equals(storeCity) ) {
-				items.add((Store)d);
-			}
-		}
-		clearSearchField();
-	}
-	
-	
-	public void deleteStore(String storeName) {
-		for (int i = 0; i < storeList.size(); i++) {
-			if(storeList.get(i).getStoreName().equals(storeName)) {
-				storeList.remove(i);
-				break;
-			}
-		}
-		
-	}
-
-	public void updateStore(String storeName, int storeCode, int k) {
-		for(Store d : storeList) {
-			if((d.getStoreCode()) == k ) {
-				d.setStoreName(storeName);
-			}
-		}
-		
-	}
-
-	public void tableSync() {
-		List<Store> items = storeTableView.getItems();
-		items.clear();
-		for(Store d : storeList) {
-			if(d instanceof Store) {
-				items.add((Store) d);
-			}
-		}
-		
-	}
-
-	public void createStore(int storeCode, String storeName, String storeCity) {
-		Store d = new Store(storeCode, storeName, storeCity);
-		storeList.add(d); 
+	private void refreshTable() {
+		storeTableView.getItems().setAll(storeService.getAll());
 	}
 	
 	

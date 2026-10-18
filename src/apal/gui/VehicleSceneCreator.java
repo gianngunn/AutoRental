@@ -1,11 +1,9 @@
 package apal.gui;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import apal.core.Car;
 import apal.core.TwoWheeled;
 import apal.core.Vehicle;
+import apal.service.VehicleService;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,8 +19,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 
 public class VehicleSceneCreator extends SceneCreator implements EventHandler<MouseEvent>{
-	//List of vehicle
-	public static ArrayList<Vehicle> vehicleList;
+	private final VehicleService vehicleService;
 	//Flow Pane
 	FlowPane buttonFlowPane, goFlowPane;
 	//Grid Panes
@@ -41,11 +38,11 @@ public class VehicleSceneCreator extends SceneCreator implements EventHandler<Mo
 	
 	
 	
-	public VehicleSceneCreator(double width, double height){
+	public VehicleSceneCreator(double width, double height, VehicleService vehicleService){
 		super(width, height);
+		this.vehicleService = vehicleService;
 		
 		//Initialize fields
-		vehicleList = new ArrayList<>();
 		rootGridPane = new GridPane();
 		buttonFlowPane = new FlowPane();
 		goFlowPane = new FlowPane();
@@ -219,113 +216,59 @@ public class VehicleSceneCreator extends SceneCreator implements EventHandler<Mo
 		}
 		
 		if(event.getSource() == newVehicleBtn) {
-			int k = 0;
-			for (int i = 0; i < vehicleList.size(); i++) {
-				if(vehicleList.get(i).getVehicleLicensePlate().equals(licPlateField.getText())) {
-					 k = 1;
-					 break;
+			if (runServiceAction("Cannot create vehicle", () -> {
+				String selectedType = cCorTCombo.getValue();
+				if ("Car".equals(selectedType)) {
+					vehicleService.addCar(licPlateField.getText(), modelField.getText(), fuelField.getText(),
+							typeField.getText(), engineField.getText(), Float.parseFloat(costField.getText()),
+							Integer.parseInt(seatNField.getText()), Integer.parseInt(doorsNField.getText()));
+				} else if ("TwoWheeled".equals(selectedType)) {
+					vehicleService.addTwoWheeled(licPlateField.getText(), modelField.getText(), fuelField.getText(),
+							typeField.getText(), engineField.getText(), Float.parseFloat(costField.getText()),
+							Float.parseFloat(seatHField.getText()), lugSystemField.getText());
+				} else {
+					throw new IllegalArgumentException("Select a vehicle type.");
 				}
-			}
-				
-			if(k == 0) {
-			if(cCorTCombo.getValue() == "Car") {
-				
-				if(!(licPlateField.getText().isBlank())) {
-					
-					String vehicleLicensePlate = licPlateField.getText();
-					String vehicleModel = modelField.getText();
-					String vehicleFuel = fuelField.getText();
-					String vehicleType = typeField.getText();
-					String vehicleEngine = engineField.getText();
-					float vehicleDayCost = Float.valueOf(costField.getText());
-					int seatNumber = Integer.valueOf(seatNField.getText());
-					int doorsNumber = Integer.valueOf(doorsNField.getText());
-					createCar(vehicleLicensePlate, vehicleModel, vehicleFuel, vehicleType
-							, vehicleEngine, vehicleDayCost, seatNumber, doorsNumber);
-					tableSync();
-					clearTextFields();
-				}
-			}
-			
-			if(cCorTCombo.getValue() == "TwoWheeled") {
-				
-				
-					
-						if(!(licPlateField.getText().isBlank())) {
-					
-							String vehicleLicensePlate = licPlateField.getText();
-							String vehicleModel = modelField.getText();
-							String vehicleFuel = fuelField.getText();
-							String vehicleType = typeField.getText();
-							String vehicleEngine = engineField.getText();
-							float vehicleDayCost = Float.valueOf(costField.getText());
-							float seatHeight = Float.valueOf(seatHField.getText());
-							String luggageSystem = lugSystemField.getText();
-							createTwoWheeled(vehicleLicensePlate, vehicleModel, vehicleFuel, vehicleType
-									, vehicleEngine, vehicleDayCost, seatHeight, luggageSystem);
-							tableSync();
-							clearTextFields();
-							
-						}
-				
-			}
-		  }
-		}
-			
-		
-	if(event.getSource() == updateVehicleBtn) {
-		
-		if(cCorTCombo.getValue() == "Car") {
-			
-			if(!(licPlateField.getText().isBlank())) {
-				//String vehicleLicensePlate = licPlateField.getText();
-				String vehicleModel = modelField.getText();
-				String vehicleFuel = fuelField.getText();
-				String vehicleType = typeField.getText();
-				String vehicleEngine = engineField.getText();
-				float vehicleDayCost = Float.valueOf(costField.getText());
-				int seatNumber = Integer.valueOf(seatNField.getText());
-				int doorsNumber = Integer.valueOf(doorsNField.getText());
-				String k = "";
-				Car selectedLic = (Car) vehicleTableView.getSelectionModel().getSelectedItem();
-				if(selectedLic != null) {
-					k = selectedLic.getVehicleLicensePlate();
-				}
-				updateCar(k, vehicleModel, vehicleFuel, vehicleType
-						, vehicleEngine, vehicleDayCost, seatNumber, doorsNumber);
-				tableSync();
+			})) {
+				refreshTable();
 				clearTextFields();
 			}
 		}
-		
-		if(cCorTCombo.getValue() == "TwoWheeled") {
-			if(!(licPlateField.getText().isBlank())) {
-			//String vehicleLicensePlate = licPlateField.getText();
-			String vehicleModel = modelField.getText();
-			String vehicleFuel = fuelField.getText();
-			String vehicleType = typeField.getText();
-			String vehicleEngine = engineField.getText();
-			float vehicleDayCost = Float.valueOf(costField.getText());
-			float seatHeight = Float.valueOf(seatHField.getText());
-			String luggageSystem = lugSystemField.getText();
-			String k = "";
-			TwoWheeled selectedLic = (TwoWheeled) vehicleTableView.getSelectionModel().getSelectedItem();
-			if(selectedLic != null) {
-				k = selectedLic.getVehicleLicensePlate();
+			
+	if(event.getSource() == updateVehicleBtn) {
+		Vehicle selectedVehicle = vehicleTableView.getSelectionModel().getSelectedItem();
+		if (selectedVehicle == null) {
+			runServiceAction("Cannot update vehicle", () -> {
+				throw new IllegalArgumentException("Select a vehicle to update.");
+			});
+		} else if (runServiceAction("Cannot update vehicle", () -> {
+			if (selectedVehicle instanceof Car) {
+				vehicleService.updateCar(selectedVehicle.getVehicleLicensePlate(), modelField.getText(),
+						fuelField.getText(), typeField.getText(), engineField.getText(),
+						Float.parseFloat(costField.getText()), Integer.parseInt(seatNField.getText()),
+						Integer.parseInt(doorsNField.getText()));
+			} else if (selectedVehicle instanceof TwoWheeled) {
+				vehicleService.updateTwoWheeled(selectedVehicle.getVehicleLicensePlate(), modelField.getText(),
+						fuelField.getText(), typeField.getText(), engineField.getText(),
+						Float.parseFloat(costField.getText()), Float.parseFloat(seatHField.getText()),
+						lugSystemField.getText());
 			}
-			updateTwoWheeled(k, vehicleModel, vehicleFuel, vehicleType
-					, vehicleEngine, vehicleDayCost, seatHeight, luggageSystem);
-			tableSync();
+		})) {
+			refreshTable();
 			clearTextFields();
-			}
 		}
 	}
+
 		if(event.getSource() == deleteVehicleBtn) {
-			if(!(licPlateField.getText().isBlank())) {
-			deleteVehicle(licPlateField.getText());
-			
-			tableSync();
-			clearTextFields();
+			Vehicle selectedVehicle = vehicleTableView.getSelectionModel().getSelectedItem();
+			if (selectedVehicle == null) {
+				runServiceAction("Cannot delete vehicle", () -> {
+					throw new IllegalArgumentException("Select a vehicle to delete.");
+				});
+			} else if (runServiceAction("Cannot delete vehicle",
+					() -> vehicleService.delete(selectedVehicle.getVehicleLicensePlate()))) {
+					refreshTable();
+					clearTextFields();
 			}
 		}
 		
@@ -367,109 +310,13 @@ public class VehicleSceneCreator extends SceneCreator implements EventHandler<Mo
 	}
 		
 	if(event.getSource() == goBtn) {
-		sTable();
+		vehicleTableView.getItems().setAll(vehicleService.findByType(searchCombo.getValue()));
 	}
 		
 	}
 
-	
-	
-
-	
-
-	public void createCar(String vehicleLicensePlate, String vehicleModel, String vehicleFuel, String vehicleType,
-			String vehicleEngine, float vehicleDayCost, int seatNumber, int doorsNumber) {
-		Car c = new Car(vehicleLicensePlate, vehicleModel, vehicleFuel, vehicleType, vehicleEngine, vehicleDayCost, seatNumber, doorsNumber);
-		vehicleList.add(c);
-	}
-	
-	public void createTwoWheeled(String vehicleLicensePlate, String vehicleModel, String vehicleFuel,
-			String vehicleType, String vehicleEngine, float vehicleDayCost, float seatHeight, String luggageSystem) {
-		TwoWheeled d = new TwoWheeled(vehicleLicensePlate, vehicleModel, vehicleFuel, vehicleType, vehicleEngine, vehicleDayCost, seatHeight, luggageSystem);
-		vehicleList.add(d);
-		
-	}
-
-	public void updateCar(String k, String vehicleModel, String vehicleFuel, String vehicleType, String vehicleEngine,
-			float vehicleDayCost, int seatNumber, int doorsNumber) {
-		for(Vehicle d : vehicleList) {
-			if(d instanceof Car) {
-				if((d.getVehicleLicensePlate()) == k) {
-					((Car)d).setVehicleModel(vehicleModel);
-					((Car)d).setVehicleFuel(vehicleFuel);
-					((Car)d).setVehicleEngine(vehicleEngine);
-					((Car)d).setVehicleType(vehicleType);
-					((Car)d).setVehicleDayCost(vehicleDayCost);
-					((Car)d).setSeatNumber(seatNumber);
-					((Car)d).setDoorsNumber(doorsNumber);
-				}
-			}
-		}
-	}
-	
-	public void updateTwoWheeled(String k, String vehicleModel, String vehicleFuel, String vehicleType,
-			String vehicleEngine, float vehicleDayCost, float seatHeight, String luggageSystem) {
-		for(Vehicle d :vehicleList) {
-			if(d instanceof TwoWheeled) {
-				if((d.getVehicleLicensePlate()) == k) {
-					((TwoWheeled)d).setVehicleModel(vehicleModel);
-					((TwoWheeled)d).setVehicleFuel(vehicleFuel);
-					((TwoWheeled)d).setVehicleEngine(vehicleEngine);
-					((TwoWheeled)d).setVehicleType(vehicleType);
-					((TwoWheeled)d).setVehicleDayCost(vehicleDayCost);
-					((TwoWheeled)d).setSeatHeight(seatHeight);
-					((TwoWheeled)d).setLuggageSystem(luggageSystem);
-				}
-			}
-		}
-		
-	}
-	
-	
-	
-	public void deleteVehicle(String vehicleLicensePlate) {
-		for (int i = 0; i < vehicleList.size(); i++) {
-			if(vehicleList.get(i).getVehicleLicensePlate().equals(vehicleLicensePlate)) {
-				vehicleList.remove(i);
-				break;
-			}
-		}
-	}
-	
-	public void sTable() {
-			
-		if(searchCombo.getValue() == "Show all") {
-			tableSync();
-		}
-		if(searchCombo.getValue() == "TwoWheeled") {
-			List<Vehicle> items = vehicleTableView.getItems();
-			items.clear();
-			for(Vehicle d : vehicleList) {
-				if(d instanceof TwoWheeled) {
-					items.add((TwoWheeled) d);
-				}
-			}
-		}
-		if(searchCombo.getValue() == "Car"){
-			List<Vehicle> items = vehicleTableView.getItems();
-			items.clear();
-			for(Vehicle d : vehicleList) {
-				if(d instanceof Car) {
-					items.add((Car) d);
-				}
-			}
-		}
-	}
-	
-	
-	public void tableSync() {
-		List<Vehicle> items = vehicleTableView.getItems();
-		items.clear();
-		for(Vehicle d : vehicleList) {
-			if(d instanceof Vehicle) {
-				items.add((Vehicle) d);
-			}
-		}
+	private void refreshTable() {
+		vehicleTableView.getItems().setAll(vehicleService.getAll());
 	}
 	
 	public void clearTextFields(){
